@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var userAgent = "AnimeNewsLemporter/0.1.0"
+
 type LemmyData struct {
 	Username      string
 	Password      string

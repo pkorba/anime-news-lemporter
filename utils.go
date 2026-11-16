@@ -49,7 +49,7 @@ func Request(url string) ([]byte, error) {
 	}
 
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("User-Agent", "AnimeNewsLemporter/0.1.0")
+	req.Header.Add("User-Agent", userAgent)
 
 	client := &http.Client{
 		Timeout: 20 * time.Second,

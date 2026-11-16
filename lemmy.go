@@ -131,7 +131,7 @@ func (g *GoLemmy) UploadImage(data []byte) (string, error) {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+g.Client.Token)
 	req.Header.Add("Content-Type", writer.FormDataContentType())
-	req.Header.Add("User-Agent", "AnimeNewsLemporter/0.1.0")
+	req.Header.Add("User-Agent", userAgent)
 
 	client := &http.Client{
 		Timeout: 20 * time.Second,
