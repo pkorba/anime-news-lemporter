@@ -140,23 +140,30 @@ func ParseTenraiNews(data []byte) ([]NewsItem, error) {
 }
 
 var inlineKeywords = []string{
-	"directing",
+	"is directing",
+	"directs at",
 	"returns to direct",
+	"is returning to direct",
 	"is helming the anime",
+	"assistant director",
 	"voice actor",
 	"voice actress",
 	"cast members",
 	"voicing",
 	"starring as",
 	"joining the cast",
-	"performing the opening theme",
-	"performing the ending theme",
+	"performing the opening",
+	"performing the ending",
 	"performing the theme song",
 	"composing the music",
+	"music composer",
 	"designing the characters",
 	"character design",
 	"sound director",
-	"chief animation director",
+	"art director",
+	"animation director",
+	"animation producer",
+	"series composer",
 	"series composition",
 }
 
@@ -183,8 +190,10 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 		switch {
 		case strings.HasPrefix(clearedPara, "Staff  \n"):
 			newsContent.Staff = strings.Replace(clearedPara, "Staff", "**Staff:**", 1)
+			newsContent.Staff = strings.ReplaceAll(newsContent.Staff, " **NEW**", "")
 		case strings.HasPrefix(clearedPara, "Cast  \n"):
 			newsContent.Cast = strings.Replace(clearedPara, "Cast", "**Cast:**", 1)
+			newsContent.Cast = strings.ReplaceAll(newsContent.Cast, " **NEW**", "")
 		case strings.HasPrefix(clearedPara, "Synopsis  \n"):
 			newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis", "**Synopsis:**", 1)
 		case strings.HasPrefix(clearedPara, "Official site: "):
