@@ -26,4 +26,6 @@ You need to launch the program with these environment variables.
 
 It's possible, but entirely optional, to have a `blacklist.txt` file in `WORKING_DIR`. 
 Each line in this file is treated as a separate phrase. If that phrase is found in a source's 
-title, that source will not be posted to Lemmy.
+title, that source will not be posted to Lemmy. `blacklist.txt` only check against the original 
+titles (before replacing Romaji title with its English equivalent), so if you want to exclude 
+news by using an anime title, it needs to be Romaji title.
