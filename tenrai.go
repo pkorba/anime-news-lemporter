@@ -126,18 +126,130 @@ func (nc *NewsContent) Body() string {
 	return strings.TrimSpace(b.String())
 }
 
-func ParseTenraiNews(data []byte) ([]NewsItem, error) {
-	var jsonData Response
-
-	if err := json.Unmarshal(data, &jsonData); err != nil {
-		return []NewsItem{}, err
+func (nc *NewsContent) GetTitles() []string {
+	queryList := []string{}
+	if nc.AnimeTitleEn != "" {
+		queryList = append(queryList, nc.AnimeTitleEn)
 	}
 
-	sort.Slice(jsonData.Data, func(i, j int) bool {
-		return jsonData.Data[i].Date.Before(jsonData.Data[j].Date)
-	})
+	if nc.AnimeTitleRo != "" {
+		queryList = append(queryList, nc.AnimeTitleRo)
+	}
 
-	return jsonData.Data, nil
+	return queryList
+}
+
+// Replace Romaji anime title with English one within news title
+func (nc *NewsContent) SwapTitles() {
+	title := nc.ExtractRomajiFromTitle()
+	if title != "" {
+		nc.Title = strings.Replace(nc.Title, title, nc.AnimeTitleEn, 1)
+	}
+}
+
+var titleFromIntro = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/manga/\d+/?\)\s\(_([^)_]+)_\)`)
+
+// Extract title from sentence in the first paragraph
+// [_Romaji Title_](https://myanimelist.net/manga/123) (_English Title_)
+func (nc *NewsContent) ExtractEnglishFromIntro() (string, string) {
+	matches := titleFromIntro.FindStringSubmatch(nc.Intro)
+
+	if len(matches) >= 3 {
+		romajiTitle := matches[1]
+		englishTitle := matches[2]
+		return romajiTitle, englishTitle
+	}
+
+	return "", ""
+}
+
+var titleFromTitle = regexp.MustCompile(`'(.*?)'`)
+
+// Extract title from news title 'Romaji Title'
+func (nc *NewsContent) ExtractRomajiFromTitle() string {
+	matches := titleFromTitle.FindStringSubmatch(nc.Title)
+
+	if len(matches) >= 2 {
+		romajiTitle := matches[1]
+		return romajiTitle
+	}
+
+	return ""
+}
+
+// Try to replace Romaji anime title within news title with English anime title
+func (nc *NewsContent) TryReplaceTitle() error {
+	romajiTitle, englishTitle := nc.ExtractEnglishFromIntro()
+	if englishTitle != "" {
+		nc.AnimeTitleEn = englishTitle
+		// Keep Romaji title for duplicate search
+		nc.AnimeTitleRo = romajiTitle
+		nc.SwapTitles()
+		return nil
+	}
+
+	nc.AnimeTitleRo = nc.ExtractRomajiFromTitle()
+
+	if nc.AnimeTitleRo != "" {
+		time.Sleep(time.Second)
+		found, err := nc.FindTitle("anime")
+		if err != nil {
+			return fmt.Errorf("find remote title %w", err)
+		}
+		if !found {
+			_, err := nc.FindTitle("manga")
+			if err != nil {
+				return fmt.Errorf("find remote title %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// If romaji title is the same as one found in relations,
+// try to grab English title from anime/manga details
+func (nc *NewsContent) FindTitle(mediaType string) (bool, error) {
+	var collection []RelatedItem
+	if mediaType == "anime" {
+		collection = nc.Relations.Anime
+	} else {
+		collection = nc.Relations.Manga
+	}
+
+	for _, content := range collection {
+		if nc.AnimeTitleRo == content.Name {
+			animeTitleEn, err := FetchRemoteTitle(mediaType, content.MALID)
+			if err != nil {
+				return false, err
+			}
+			if animeTitleEn != "" {
+				nc.AnimeTitleEn = animeTitleEn
+				nc.SwapTitles()
+				return true, nil
+			}
+
+			return false, nil
+		}
+	}
+
+	return false, nil
+}
+
+// Fetch English title from anime/manga details page
+func FetchRemoteTitle(mediumType string, id int) (string, error) {
+	url := fmt.Sprintf("https://api.tenrai.org/v1/%s/%d", mediumType, id)
+	data, err := Request(url)
+	if err != nil {
+		return "", fmt.Errorf("download details for %s with id %d: %w", mediumType, id, err)
+	}
+
+	var jsonData AnimeResponse
+	if err := json.Unmarshal(data, &jsonData); err != nil {
+		return "", fmt.Errorf("unmarshal details for %s with id %d: %w", mediumType, id, err)
+	}
+
+	return jsonData.Data.TitleEnglish, nil
 }
 
 var inlineKeywords = []string{
@@ -215,12 +327,25 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	return newsContent, nil
 }
 
-// Replace Romaji anime title with English one within news title
-func (nc *NewsContent) SwapTitles() {
-	title := extractRomajiFromTitle(nc.Title)
-	if title != "" {
-		nc.Title = strings.Replace(nc.Title, title, nc.AnimeTitleEn, 1)
+var prevRole = regexp.MustCompile(`\s(\(_[^)]+\))`)
+
+// Remove example roles written in parentheses
+func removePreviousRoles(text string) string {
+	return prevRole.ReplaceAllString(text, "")
+}
+
+func ParseTenraiNews(data []byte) ([]NewsItem, error) {
+	var jsonData Response
+
+	if err := json.Unmarshal(data, &jsonData); err != nil {
+		return []NewsItem{}, err
 	}
+
+	sort.Slice(jsonData.Data, func(i, j int) bool {
+		return jsonData.Data[i].Date.Before(jsonData.Data[j].Date)
+	})
+
+	return jsonData.Data, nil
 }
 
 var announcementKeywords = []string{
@@ -266,118 +391,6 @@ func HasDuplicates(gl *GoLemmy, queryList []string, communityName string) (bool,
 	}
 
 	return false, nil
-}
-
-var prevRole = regexp.MustCompile(`\s(\(_[^)]+\))`)
-
-// Remove example roles written in parentheses
-func removePreviousRoles(text string) string {
-	return prevRole.ReplaceAllString(text, "")
-}
-
-var titleFromIntro = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/manga/\d+/?\)\s\(_([^)_]+)_\)`)
-
-// Extract title from sentence in the first paragraph
-// [_Romaji Title_](https://myanimelist.net/manga/123) (_English Title_)
-func extractEnglishFromIntro(input string) (string, string) {
-	matches := titleFromIntro.FindStringSubmatch(input)
-
-	if len(matches) >= 3 {
-		romajiTitle := matches[1]
-		englishTitle := matches[2]
-		return romajiTitle, englishTitle
-	}
-
-	return "", ""
-}
-
-var titleFromTitle = regexp.MustCompile(`'(.*?)'`)
-
-// Extract title from news title 'Romaji Title'
-func extractRomajiFromTitle(input string) string {
-	matches := titleFromTitle.FindStringSubmatch(input)
-
-	if len(matches) >= 2 {
-		romajiTitle := matches[1]
-		return romajiTitle
-	}
-
-	return ""
-}
-
-// Try to replace Romaji anime title within news title with English anime title
-func TryReplaceTitle(nc *NewsContent) error {
-	romajiTitle, englishTitle := extractEnglishFromIntro(nc.Intro)
-	if englishTitle != "" {
-		nc.AnimeTitleEn = englishTitle
-		// Keep Romaji title for duplicate search
-		nc.AnimeTitleRo = romajiTitle
-		nc.SwapTitles()
-		return nil
-	}
-
-	nc.AnimeTitleRo = extractRomajiFromTitle(nc.Title)
-
-	if nc.AnimeTitleRo != "" {
-		time.Sleep(time.Second)
-		found, err := FindTitle(nc, "anime")
-		if err != nil {
-			return fmt.Errorf("find remote title %w", err)
-		}
-		if !found {
-			_, err := FindTitle(nc, "manga")
-			if err != nil {
-				return fmt.Errorf("find remote title %w", err)
-			}
-		}
-	}
-
-	return nil
-}
-
-// If romaji title is the same as one found in relations,
-// try to grab English title from anime/manga details
-func FindTitle(nc *NewsContent, mediaType string) (bool, error) {
-	var collection []RelatedItem
-	if mediaType == "anime" {
-		collection = nc.Relations.Anime
-	} else {
-		collection = nc.Relations.Manga
-	}
-
-	for _, content := range collection {
-		if nc.AnimeTitleRo == content.Name {
-			animeTitleEn, err := FetchRemoteTitle(mediaType, content.MALID)
-			if err != nil {
-				return false, err
-			}
-			if animeTitleEn != "" {
-				nc.AnimeTitleEn = animeTitleEn
-				nc.SwapTitles()
-				return true, nil
-			}
-
-			return false, nil
-		}
-	}
-
-	return false, nil
-}
-
-// Fetch English title from anime/manga details page
-func FetchRemoteTitle(mediumType string, id int) (string, error) {
-	url := fmt.Sprintf("https://api.tenrai.org/v1/%s/%d", mediumType, id)
-	data, err := Request(url)
-	if err != nil {
-		return "", fmt.Errorf("download details for %s with id %d: %w", mediumType, id, err)
-	}
-
-	var jsonData AnimeResponse
-	if err := json.Unmarshal(data, &jsonData); err != nil {
-		return "", fmt.Errorf("unmarshal details for %s with id %d: %w", mediumType, id, err)
-	}
-
-	return jsonData.Data.TitleEnglish, nil
 }
 
 type AnimeResponse struct {

@@ -98,6 +98,30 @@ func run(db *SQLiteDB, lemmyData *LemmyData, workDir string) error {
 	return nil
 }
 
+func ReadBlacklist(workDir string) []string {
+	file, err := os.Open(filepath.Join(workDir, "blacklist.txt"))
+	if err != nil {
+		slog.Info("no blacklist file found.")
+		return []string{}
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		slog.Error("read blacklist file", "error", err)
+		return []string{}
+	}
+
+	return lines
+}
+
 func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 	tagDate, err := db.GetTagDate(tag)
 	if err != nil {
@@ -145,30 +169,6 @@ func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 	return nil
 }
 
-func ReadBlacklist(workDir string) []string {
-	file, err := os.Open(filepath.Join(workDir, "blacklist.txt"))
-	if err != nil {
-		slog.Info("no blacklist file found.")
-		return []string{}
-	}
-	defer file.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		slog.Error("read blacklist file", "error", err)
-		return []string{}
-	}
-
-	return lines
-}
-
 func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 	unprocessedNewsEntryIDs, err := db.GetUnprocessedNewsEntryIDs()
 	if err != nil {
@@ -201,13 +201,17 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 			continue
 		}
 
-		ogTitle := extractRomajiFromTitle(newsContent.Title)
+		ogTitle := newsContent.ExtractRomajiFromTitle()
 
-		if err := TryReplaceTitle(&newsContent); err != nil {
+		if err := newsContent.TryReplaceTitle(); err != nil {
 			slog.Error("replace romaji title", "error", err)
 		}
 
-		queryList := GetTitles(&newsContent, ogTitle)
+		queryList := newsContent.GetTitles()
+		if ogTitle != "" && ogTitle != newsContent.AnimeTitleRo {
+			queryList = append(queryList, ogTitle)
+		}
+
 		duplicateFound, err := HasDuplicates(
 			&gl,
 			queryList,
@@ -261,21 +265,4 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 	}
 
 	return nil
-}
-
-func GetTitles(nc *NewsContent, ogTitle string) []string {
-	queryList := []string{}
-	if nc.AnimeTitleEn != "" {
-		queryList = append(queryList, nc.AnimeTitleEn)
-	}
-
-	if nc.AnimeTitleRo != "" {
-		queryList = append(queryList, nc.AnimeTitleRo)
-	}
-
-	if ogTitle != "" && ogTitle != nc.AnimeTitleRo {
-		queryList = append(queryList, ogTitle)
-	}
-
-	return queryList
 }
