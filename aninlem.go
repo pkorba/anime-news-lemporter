@@ -201,18 +201,13 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 			continue
 		}
 
+		ogTitle := extractRomajiFromTitle(newsContent.Title)
+
 		if err := TryReplaceTitle(&newsContent); err != nil {
 			slog.Error("replace romaji title", "error", err)
 		}
 
-		queryList := []string{}
-		if newsContent.AnimeTitleEn != "" {
-			queryList = append(queryList, newsContent.AnimeTitleEn)
-		}
-		if newsContent.AnimeTitleRo != "" {
-			queryList = append(queryList, newsContent.AnimeTitleRo)
-		}
-
+		queryList := GetTitles(&newsContent, ogTitle)
 		duplicateFound, err := HasDuplicates(
 			&gl,
 			queryList,
@@ -266,4 +261,21 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 	}
 
 	return nil
+}
+
+func GetTitles(nc *NewsContent, ogTitle string) []string {
+	queryList := []string{}
+	if nc.AnimeTitleEn != "" {
+		queryList = append(queryList, nc.AnimeTitleEn)
+	}
+
+	if nc.AnimeTitleRo != "" {
+		queryList = append(queryList, nc.AnimeTitleRo)
+	}
+
+	if ogTitle != nc.AnimeTitleRo {
+		queryList = append(queryList, ogTitle)
+	}
+
+	return queryList
 }
