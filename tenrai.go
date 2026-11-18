@@ -361,7 +361,6 @@ func FindTitle(nc *NewsContent, mediaType string) (bool, error) {
 // Fetch English title from anime/manga details page
 func FetchRemoteTitle(mediumType string, id int) (string, error) {
 	url := fmt.Sprintf("https://api.tenrai.org/v1/%s/%d", mediumType, id)
-	fmt.Printf("url: %s", url)
 	data, err := Request(url)
 	if err != nil {
 		return "", fmt.Errorf("download details for %s with id %d: %w", mediumType, id, err)
