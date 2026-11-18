@@ -273,7 +273,7 @@ func GetTitles(nc *NewsContent, ogTitle string) []string {
 		queryList = append(queryList, nc.AnimeTitleRo)
 	}
 
-	if ogTitle != nc.AnimeTitleRo {
+	if ogTitle != "" && ogTitle != nc.AnimeTitleRo {
 		queryList = append(queryList, ogTitle)
 	}
 
