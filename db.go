@@ -102,12 +102,11 @@ func (sdb *SQLiteDB) UpdateTagDate(tag string) error {
 	return nil
 }
 
-func (sdb *SQLiteDB) InsertNewsEntry(id int64, title string, lemmyId int64, publishedAt time.Time) error {
+func (sdb *SQLiteDB) InsertNewsEntry(id int64, title string, publishedAt time.Time) error {
 	_, err := sdb.DB.ExecContext(sdb.Ctx,
-		`INSERT INTO news_items (id, title, lemmy_id, published_at) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO news_items (id, title, published_at) VALUES (?, ?, ?)`,
 		id,
 		title,
-		lemmyId,
 		publishedAt.UTC().Unix(),
 	)
 	if err != nil {

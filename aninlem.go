@@ -133,7 +133,7 @@ func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 			continue
 		}
 
-		if err := db.InsertNewsEntry(newsItem.MALID, newsItem.Title, 0, newsItem.Date); err != nil {
+		if err := db.InsertNewsEntry(newsItem.MALID, newsItem.Title, newsItem.Date); err != nil {
 			return fmt.Errorf(
 				"insert news item with MAL ID %d: %w",
 				newsItem.MALID,
