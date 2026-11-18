@@ -181,6 +181,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	var newsContent NewsContent
 	newsContent.Title = jsonData.Data.Title
 	newsContent.ImageURL = jsonData.Data.Images.JPG.ImageURL
+	newsContent.Relations = jsonData.Data.Relations
 	if len(textArray) >= 2 {
 		newsContent.Intro = textArray[1]
 	}
