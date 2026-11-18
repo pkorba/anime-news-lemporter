@@ -217,7 +217,10 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 
 // Replace Romaji anime title with English one within news title
 func (nc *NewsContent) SwapTitles() {
-	nc.Title = strings.Replace(nc.Title, nc.AnimeTitleRo, nc.AnimeTitleEn, 1)
+	title := extractRomajiFromTitle(nc.Title)
+	if title != "" {
+		nc.Title = strings.Replace(nc.Title, title, nc.AnimeTitleEn, 1)
+	}
 }
 
 var announcementKeywords = []string{
@@ -272,12 +275,12 @@ func removePreviousRoles(text string) string {
 	return prevRole.ReplaceAllString(text, "")
 }
 
-var enRoTitle = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/manga/\d+/?\)\s\(_([^)_]+)_\)`)
+var titleFromIntro = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/manga/\d+/?\)\s\(_([^)_]+)_\)`)
 
 // Extract title from sentence in the first paragraph
-// [Romaji Title](https://myanimelist.net/manga/123)(_English Title_)
-func extractEnglishTitle(input string) (string, string) {
-	matches := enRoTitle.FindStringSubmatch(input)
+// [_Romaji Title_](https://myanimelist.net/manga/123) (_English Title_)
+func extractEnglishFromIntro(input string) (string, string) {
+	matches := titleFromIntro.FindStringSubmatch(input)
 
 	if len(matches) >= 3 {
 		romajiTitle := matches[1]
@@ -291,7 +294,7 @@ func extractEnglishTitle(input string) (string, string) {
 var titleFromTitle = regexp.MustCompile(`'(.*?)'`)
 
 // Extract title from news title 'Romaji Title'
-func extractTitleFromTitle(input string) string {
+func extractRomajiFromTitle(input string) string {
 	matches := titleFromTitle.FindStringSubmatch(input)
 
 	if len(matches) >= 2 {
@@ -304,16 +307,18 @@ func extractTitleFromTitle(input string) string {
 
 // Try to replace Romaji anime title within news title with English anime title
 func TryReplaceTitle(nc *NewsContent) error {
-	romajiTitle, englishTitle := extractEnglishTitle(nc.Intro)
-	if romajiTitle != "" {
+	romajiTitle, englishTitle := extractEnglishFromIntro(nc.Intro)
+	if englishTitle != "" {
 		nc.AnimeTitleEn = englishTitle
+		// Keep Romaji title for duplicate search
 		nc.AnimeTitleRo = romajiTitle
 		nc.SwapTitles()
-	} else {
-		nc.AnimeTitleRo = extractTitleFromTitle(nc.Title)
+		return nil
 	}
 
-	if nc.AnimeTitleEn == "" && nc.AnimeTitleRo != "" {
+	nc.AnimeTitleRo = extractRomajiFromTitle(nc.Title)
+
+	if nc.AnimeTitleRo != "" {
 		time.Sleep(time.Second)
 		found, err := FindTitle(nc, "anime")
 		if err != nil {
@@ -349,9 +354,10 @@ func FindTitle(nc *NewsContent, mediaType string) (bool, error) {
 			if animeTitleEn != "" {
 				nc.AnimeTitleEn = animeTitleEn
 				nc.SwapTitles()
+				return true, nil
 			}
 
-			return true, nil
+			return false, nil
 		}
 	}
 
