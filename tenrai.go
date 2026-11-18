@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"regexp"
 	"sort"
@@ -254,6 +255,7 @@ func HasDuplicates(gl *GoLemmy, queryList []string, communityName string) (bool,
 			// Look for titles and keywords
 			if ContainsAny(searchResult.Name, queryList) &&
 				ContainsAny(searchResult.Name, announcementKeywords) {
+				slog.Info("duplicate post found", "title", searchResult.Name)
 				return true, nil
 			}
 		}

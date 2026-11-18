@@ -129,7 +129,7 @@ func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 		}
 
 		if len(blacklist) > 0 && ContainsAny(newsItem.Title, blacklist) {
-			slog.Warn("entry found on blacklist, skipping", "title", newsItem.Title)
+			slog.Warn("title matches blacklist entry, skipping", "title", newsItem.Title)
 			continue
 		}
 
@@ -227,7 +227,7 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData, tag string) error {
 			if err := db.MarkIDAsProcessed(newsID); err != nil {
 				return fmt.Errorf("mark news as processed %w", err)
 			}
-			slog.Info("duplicate found", "newsID", newsID)
+			slog.Info("posting omitted, marked news as processed", "newsID", newsID)
 			continue
 		}
 
