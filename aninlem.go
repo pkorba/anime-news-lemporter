@@ -90,7 +90,7 @@ func run(db *SQLiteDB, lemmyData *LemmyData, workDir string) error {
 			return err
 		}
 
-		if err := ProcessNews(db, lemmyData, tag); err != nil {
+		if err := ProcessNews(db, lemmyData); err != nil {
 			return err
 		}
 	}
@@ -169,7 +169,7 @@ func ReadBlacklist(workDir string) []string {
 	return lines
 }
 
-func ProcessNews(db *SQLiteDB, lemmyData *LemmyData, tag string) error {
+func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 	unprocessedNewsEntryIDs, err := db.GetUnprocessedNewsEntryIDs()
 	if err != nil {
 		return fmt.Errorf(
