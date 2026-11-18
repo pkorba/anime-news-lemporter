@@ -73,6 +73,8 @@ func (g *GoLemmy) Search(communityName string, queryList []string, limit int) ([
 				results = append(results, searchResult)
 			}
 		}
+
+		time.Sleep(time.Second)
 	}
 	return results, nil
 }
