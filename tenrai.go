@@ -104,8 +104,9 @@ func (nc *NewsContent) Body() string {
 	}
 
 	if nc.Synopsis != "" {
+		b.WriteString("::: spoiler **Synopsis:**  \n")
 		b.WriteString(nc.Synopsis)
-		b.WriteString("  \n  \n")
+		b.WriteString("  \n:::  \n  \n")
 	}
 
 	if nc.TeaserPV != "" {
@@ -323,7 +324,8 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 				synopsisSpotted = true
 			}
 
-			newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis", "**Synopsis:**", 1)
+			// Remove here, restore when printing in order to put the whole thing in spoiler
+			newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis  \n", "", 1)
 		case strings.HasPrefix(clearedPara, "Official site: "):
 			newsContent.OfficialLinks = clearedPara
 		case strings.HasPrefix(clearedPara, "Source: "):
