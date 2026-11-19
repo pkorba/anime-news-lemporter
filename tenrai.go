@@ -147,7 +147,7 @@ func (nc *NewsContent) SwapTitles() {
 	}
 }
 
-var titleFromIntro = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/manga/\d+/?\)\s\(_([^)_]+)_\)`)
+var titleFromIntro = regexp.MustCompile(`\[_([^]]+)_\]\(https://myanimelist\.net/(?:manga|anime)/\d+/?\)\s\(_([^)_]+)_\)`)
 
 // Extract title from sentence in the first paragraph
 // [_Romaji Title_](https://myanimelist.net/manga/123) (_English Title_)
