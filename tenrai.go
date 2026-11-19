@@ -283,6 +283,8 @@ var inlineKeywords = []string{
 	"series composition",
 }
 
+var synopsisDelimiters = regexp.MustCompile(`(?i)(\(Source:.*?\)|\\\[.*?MAL Rewrite\\\])`)
+
 func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 
 	var jsonData ResponseDetails
@@ -301,6 +303,8 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 		newsContent.Intro = textArray[1]
 	}
 
+	synopsisSpotted := false
+
 	for _, paragraph := range textArray {
 		clearedPara := removePreviousRoles(paragraph)
 
@@ -312,6 +316,13 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 			newsContent.Cast = strings.Replace(clearedPara, "Cast", "**Cast:**", 1)
 			newsContent.Cast = strings.ReplaceAll(newsContent.Cast, " **NEW**", "")
 		case strings.HasPrefix(clearedPara, "Synopsis  \n"):
+			// Set a flag if synopsis could continue in other paragraphs
+			if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
+				clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
+			} else {
+				synopsisSpotted = true
+			}
+
 			newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis", "**Synopsis:**", 1)
 		case strings.HasPrefix(clearedPara, "Official site: "):
 			newsContent.OfficialLinks = clearedPara
@@ -321,7 +332,19 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 		case strings.HasPrefix(clearedPara, "[YouTube video]"):
 			newsContent.TeaserPV = "**PV:** " + clearedPara
 		default:
-			if ContainsAny(clearedPara, inlineKeywords) {
+			if synopsisSpotted {
+				if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
+					clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
+					synopsisSpotted = false
+				}
+
+				if strings.Contains(clearedPara, "on MAL") {
+					synopsisSpotted = false
+					continue
+				}
+
+				newsContent.Synopsis += ("  \n" + clearedPara)
+			} else if ContainsAny(clearedPara, inlineKeywords) {
 				newsContent.InlineRoles = append(newsContent.InlineRoles, clearedPara)
 			}
 		}
