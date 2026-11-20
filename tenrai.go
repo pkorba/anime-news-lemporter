@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -69,6 +70,7 @@ type NewsContent struct {
 	AnimeTitleRo  string
 	ImageURL      string
 	Intro         string
+	ReleaseDate   string
 	InlineRoles   []string
 	Cast          string
 	Staff         string
@@ -81,8 +83,8 @@ type NewsContent struct {
 
 func (nc *NewsContent) Body() string {
 	var b strings.Builder
-	if nc.Intro != "" {
-		b.WriteString(nc.Intro)
+	if nc.ReleaseDate != "" {
+		b.WriteString(nc.ReleaseDate)
 		b.WriteString("  \n  \n")
 	}
 
@@ -301,6 +303,10 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	newsContent.ImageURL = jsonData.Data.Images.JPG.ImageURL
 	newsContent.Relations = jsonData.Data.Relations
 	if len(textArray) >= 2 {
+		releaseDate := getReleaseDate(textArray[1], jsonData.Data.Date)
+		if releaseDate != "" {
+			newsContent.ReleaseDate = "**Release date:** " + releaseDate
+		}
 		newsContent.Intro = textArray[1]
 	}
 
@@ -355,6 +361,77 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	}
 
 	return newsContent, nil
+}
+
+var dateRegex = regexp.MustCompile(`(?P<prefix>debut|air|scheduled|premiered?).*?(?:` +
+	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}),\s(?P<year>\d{4}))|` +
+	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<year>\d{4}))|` +
+	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}))|` +
+	`(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)|` +
+	`(?P<year>\d{4})` +
+	`)`)
+
+var months = map[string]int{
+	"January":   1,
+	"February":  2,
+	"March":     3,
+	"April":     4,
+	"May":       5,
+	"June":      6,
+	"July":      7,
+	"August":    8,
+	"September": 9,
+	"October":   10,
+	"November":  11,
+	"December":  12,
+}
+
+func getReleaseDate(text string, publishedDate time.Time) string {
+	m := dateRegex.FindStringSubmatch(text)
+	if m == nil {
+		return ""
+	}
+
+	fields := make(map[string]string)
+	for i, name := range dateRegex.SubexpNames() {
+		if name != "" && m[i] != "" {
+			fields[name] = m[i]
+		}
+	}
+
+	// Already aired/no match
+	if fields["prefix"] == "premiered" {
+		return ""
+	}
+
+	day, month, year := fields["day"], fields["month"], fields["year"]
+
+	if month == "" {
+		return year
+	}
+
+	if year == "" {
+		currentYear := publishedDate.Year()
+		monthNumber := months[month]
+
+		switch {
+		case monthNumber < int(publishedDate.Month()):
+			currentYear++
+		case monthNumber == int(publishedDate.Month()) && day != "":
+			d, err := strconv.Atoi(day)
+			if err == nil && d < publishedDate.Day() {
+				currentYear++
+			}
+		}
+
+		year = strconv.Itoa(currentYear)
+	}
+
+	if day == "" {
+		return month + " " + year
+	}
+
+	return fmt.Sprintf("%s %s, %s", month, day, year)
 }
 
 var prevRole = regexp.MustCompile(`\s(\(_[^)]+\))`)
