@@ -304,50 +304,52 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 		newsContent.Intro = textArray[1]
 	}
 
-	synopsisSpotted := false
+	if len(textArray) > 2 {
+		synopsisSpotted := false
 
-	for _, paragraph := range textArray {
-		clearedPara := removePreviousRoles(paragraph)
+		for _, paragraph := range textArray[2:] {
+			clearedPara := removePreviousRoles(paragraph)
 
-		switch {
-		case strings.HasPrefix(clearedPara, "Staff  \n"):
-			newsContent.Staff = strings.Replace(clearedPara, "Staff", "**Staff:**", 1)
-			newsContent.Staff = strings.ReplaceAll(newsContent.Staff, " **NEW**", "")
-		case strings.HasPrefix(clearedPara, "Cast  \n"):
-			newsContent.Cast = strings.Replace(clearedPara, "Cast", "**Cast:**", 1)
-			newsContent.Cast = strings.ReplaceAll(newsContent.Cast, " **NEW**", "")
-		case strings.HasPrefix(clearedPara, "Synopsis  \n"):
-			// Set a flag if synopsis could continue in other paragraphs
-			if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
-				clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
-			} else {
-				synopsisSpotted = true
-			}
-
-			// Remove here, restore when printing in order to put the whole thing in spoiler
-			newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis  \n", "", 1)
-		case strings.HasPrefix(clearedPara, "Official site: "):
-			newsContent.OfficialLinks = clearedPara
-		case strings.HasPrefix(clearedPara, "Source: "):
-			newsContent.Source = strings.Replace(clearedPara, "Source:", "**Source:**", 1)
-			newsContent.Source += fmt.Sprintf(", [MyAnimeList](%s)", jsonData.Data.URL)
-		case strings.HasPrefix(clearedPara, "[YouTube video]"):
-			newsContent.TeaserPV = "**PV:** " + clearedPara
-		default:
-			if synopsisSpotted {
+			switch {
+			case strings.HasPrefix(clearedPara, "Staff  \n"):
+				newsContent.Staff = strings.Replace(clearedPara, "Staff", "**Staff:**", 1)
+				newsContent.Staff = strings.ReplaceAll(newsContent.Staff, " **NEW**", "")
+			case strings.HasPrefix(clearedPara, "Cast  \n"):
+				newsContent.Cast = strings.Replace(clearedPara, "Cast", "**Cast:**", 1)
+				newsContent.Cast = strings.ReplaceAll(newsContent.Cast, " **NEW**", "")
+			case strings.HasPrefix(clearedPara, "Synopsis  \n"):
+				// Set a flag if synopsis could continue in other paragraphs
 				if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
 					clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
-					synopsisSpotted = false
+				} else {
+					synopsisSpotted = true
 				}
 
-				if strings.Contains(clearedPara, "on MAL") {
-					synopsisSpotted = false
-					continue
-				}
+				// Remove here, restore when printing in order to put the whole thing in spoiler
+				newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis  \n", "", 1)
+			case strings.HasPrefix(clearedPara, "Official site: "):
+				newsContent.OfficialLinks = clearedPara
+			case strings.HasPrefix(clearedPara, "Source: "):
+				newsContent.Source = strings.Replace(clearedPara, "Source:", "**Source:**", 1)
+				newsContent.Source += fmt.Sprintf(", [MyAnimeList](%s)", jsonData.Data.URL)
+			case strings.HasPrefix(clearedPara, "[YouTube video]"):
+				newsContent.TeaserPV = "**PV:** " + clearedPara
+			default:
+				if synopsisSpotted {
+					if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
+						clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
+						synopsisSpotted = false
+					}
 
-				newsContent.Synopsis += ("  \n" + clearedPara)
-			} else if ContainsAny(clearedPara, inlineKeywords) {
-				newsContent.InlineRoles = append(newsContent.InlineRoles, clearedPara)
+					if strings.Contains(clearedPara, "on MAL") {
+						synopsisSpotted = false
+						continue
+					}
+
+					newsContent.Synopsis += ("  \n" + clearedPara)
+				} else if ContainsAny(clearedPara, inlineKeywords) {
+					newsContent.InlineRoles = append(newsContent.InlineRoles, clearedPara)
+				}
 			}
 		}
 	}
