@@ -340,6 +340,9 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 				newsContent.Source += fmt.Sprintf(", [MyAnimeList](%s)", jsonData.Data.URL)
 			case strings.HasPrefix(clearedPara, "[YouTube video]"):
 				newsContent.TeaserPV = "**PV:** " + clearedPara
+			case strings.HasPrefix(clearedPara, "_Note:") ||
+				strings.HasPrefix(clearedPara, "Note:"):
+				continue
 			default:
 				if synopsisSpotted {
 					if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
