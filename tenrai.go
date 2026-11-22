@@ -366,7 +366,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	return newsContent, nil
 }
 
-var dateRegex = regexp.MustCompile(`(?P<prefix>debut|air|scheduled|premiered?).*?(?:` +
+var dateRegex = regexp.MustCompile(`(?P<prefix>stream|debut|air|scheduled|premiered?).*?(?:` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}),\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}))|` +
