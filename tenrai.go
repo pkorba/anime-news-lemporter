@@ -338,6 +338,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 			case strings.HasPrefix(clearedPara, "Source: "):
 				newsContent.Source = strings.Replace(clearedPara, "Source:", "**Source:**", 1)
 				newsContent.Source += fmt.Sprintf(", [MyAnimeList](%s)", jsonData.Data.URL)
+				synopsisSpotted = false
 			case strings.HasPrefix(clearedPara, "[YouTube video]"):
 				newsContent.TeaserPV = "**PV:** " + clearedPara
 			case strings.HasPrefix(clearedPara, "_Note:") ||
