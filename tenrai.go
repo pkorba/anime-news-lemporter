@@ -391,7 +391,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	return newsContent, nil
 }
 
-var dateRegex = regexp.MustCompile(`(?P<prefix>broadcast|stream|debut|\sair|scheduled|premiered?).*?(?:` +
+var dateRegex = regexp.MustCompile(`(?P<prefix>began\sairing|broadcast|stream|debut|\sair|scheduled|premiered?).*?(?:` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}),\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}))|` +
@@ -428,7 +428,7 @@ func getReleaseDate(text string, publishedDate time.Time) string {
 	}
 
 	// Already aired/no match
-	if fields["prefix"] == "premiered" {
+	if ContainsAny(fields["prefix"], []string{"premiered", "began airing"}) {
 		return ""
 	}
 
