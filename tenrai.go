@@ -95,6 +95,11 @@ func (nc *NewsContent) Body() string {
 		}
 	}
 
+	if nc.TeaserPV != "" {
+		b.WriteString(nc.TeaserPV)
+		b.WriteString("  \n  \n")
+	}
+
 	if nc.Cast != "" {
 		b.WriteString(nc.Cast)
 		b.WriteString("  \n  \n")
@@ -109,11 +114,6 @@ func (nc *NewsContent) Body() string {
 		b.WriteString("::: spoiler **Synopsis:**  \n")
 		b.WriteString(nc.Synopsis)
 		b.WriteString("  \n:::  \n  \n")
-	}
-
-	if nc.TeaserPV != "" {
-		b.WriteString(nc.TeaserPV)
-		b.WriteString("  \n  \n")
 	}
 
 	if nc.OfficialLinks != "" {
