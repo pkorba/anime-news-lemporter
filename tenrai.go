@@ -142,11 +142,35 @@ func (nc *NewsContent) GetTitles() []string {
 	return queryList
 }
 
-// Replace Romaji anime title with English one within news title
-func (nc *NewsContent) SwapTitles() {
+// Replace Romaji anime title with English one within news title. Truncate if needed
+func (nc *NewsContent) SwapAndTruncateTitles() {
 	title := nc.ExtractRomajiFromTitle()
+	const maxTitleRunes = 200
+	original := []rune(nc.Title)
+
 	if title != "" {
-		nc.Title = strings.Replace(nc.Title, title, nc.AnimeTitleEn, 1)
+		newTitle := []rune(strings.Replace(nc.Title, title, nc.AnimeTitleEn, 1))
+
+		if len(newTitle) <= maxTitleRunes {
+			nc.Title = string(newTitle)
+			return
+		}
+
+		slog.Warn(
+			"English title too long, omitting replacement",
+			"oldTitle", nc.Title,
+			"newTitle", string(newTitle),
+		)
+	}
+
+	// Keep the original title, but enforce the limit if needed.
+	if len(original) > maxTitleRunes {
+		nc.Title = string(original[:maxTitleRunes])
+		slog.Warn(
+			"Original title too long, truncating",
+			"oldTitle", string(original),
+			"newTitle", nc.Title,
+		)
 	}
 }
 
@@ -187,7 +211,7 @@ func (nc *NewsContent) TryReplaceTitle() error {
 		nc.AnimeTitleEn = englishTitle
 		// Keep Romaji title for duplicate search
 		nc.AnimeTitleRo = romajiTitle
-		nc.SwapTitles()
+		nc.SwapAndTruncateTitles()
 		return nil
 	}
 
@@ -228,7 +252,7 @@ func (nc *NewsContent) FindTitle(mediaType string) (bool, error) {
 			}
 			if animeTitleEn != "" {
 				nc.AnimeTitleEn = animeTitleEn
-				nc.SwapTitles()
+				nc.SwapAndTruncateTitles()
 				return true, nil
 			}
 
