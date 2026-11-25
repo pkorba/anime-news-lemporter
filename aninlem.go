@@ -215,8 +215,7 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 
 		checkKeywords, err := db.GetCheckKeywords(newsID)
 		if err != nil {
-			slog.Error("get check_keywords", "error", err)
-			continue
+			return fmt.Errorf("get check_keywords %w", err)
 		}
 
 		clearedIntro := RemovePreviousRoles(newsContent.Intro)
@@ -282,7 +281,7 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 		}
 
 		if err := db.SetNewsEntryPostID(newsID, postID); err != nil {
-			return fmt.Errorf("save post ID %v", err)
+			return fmt.Errorf("save post ID %w", err)
 		}
 
 		if err := db.MarkIDAsProcessed(newsID); err != nil {
