@@ -157,7 +157,12 @@ func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 			continue
 		}
 
-		if err := db.InsertNewsEntry(newsItem.MALID, newsItem.Title, newsItem.Date); err != nil {
+		if err := db.InsertNewsEntry(
+			newsItem.MALID,
+			newsItem.Title,
+			newsItem.Date,
+			tag != "New Anime",
+		); err != nil {
 			return fmt.Errorf(
 				"insert news item with MAL ID %d: %w",
 				newsItem.MALID,
@@ -167,6 +172,13 @@ func FetchNews(db *SQLiteDB, tag string, blacklist []string) error {
 	}
 
 	return nil
+}
+
+var introKeywords = []string{
+	"visual",
+	"promotional video",
+	"trailer",
+	"teaser",
 }
 
 func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
@@ -198,6 +210,20 @@ func ProcessNews(db *SQLiteDB, lemmyData *LemmyData) error {
 		newsContent, err := ParseTenraiNewsDetails(newsDetailsJson)
 		if err != nil {
 			slog.Error("parse details", "newsID", newsID, "error", err)
+			continue
+		}
+
+		checkKeywords, err := db.GetCheckKeywords(newsID)
+		if err != nil {
+			slog.Error("get check_keywords", "error", err)
+			continue
+		}
+
+		clearedIntro := RemovePreviousRoles(newsContent.Intro)
+		if checkKeywords && !ContainsAny(clearedIntro, introKeywords) {
+			if err := db.MarkIDAsProcessed(newsID); err != nil {
+				return fmt.Errorf("mark news as processed %w", err)
+			}
 			continue
 		}
 

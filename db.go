@@ -28,11 +28,12 @@ func (sdb *SQLiteDB) Init(driver string, path string) error {
 	// Create table for processed news
 	_, err = sdb.DB.ExecContext(sdb.Ctx, `
 		CREATE TABLE IF NOT EXISTS news_items (
-			id           INTEGER PRIMARY KEY,
-			title        TEXT NOT NULL,
-			lemmy_id     INTEGER NULL,
-			published_at INTEGER NOT NULL,
-			processed    BOOLEAN NOT NULL DEFAULT FALSE
+			id             INTEGER PRIMARY KEY,
+			title          TEXT NOT NULL,
+			lemmy_id       INTEGER NULL,
+			published_at   INTEGER NOT NULL,
+			check_keywords BOOLEAN NOT NULL DEFAULT FALSE,
+			processed      BOOLEAN NOT NULL DEFAULT FALSE
 		)`,
 	)
 	if err != nil {
@@ -102,12 +103,19 @@ func (sdb *SQLiteDB) UpdateTagDate(tag string) error {
 	return nil
 }
 
-func (sdb *SQLiteDB) InsertNewsEntry(id int64, title string, publishedAt time.Time) error {
-	_, err := sdb.DB.ExecContext(sdb.Ctx,
-		`INSERT INTO news_items (id, title, published_at) VALUES (?, ?, ?)`,
+func (sdb *SQLiteDB) InsertNewsEntry(
+	id int64,
+	title string,
+	publishedAt time.Time,
+	checkKeywords bool,
+) error {
+	_, err := sdb.DB.ExecContext(sdb.Ctx, `
+		INSERT INTO news_items (id, title, published_at, check_keywords)
+		VALUES (?, ?, ?, ?)`,
 		id,
 		title,
 		publishedAt.UTC().Unix(),
+		checkKeywords,
 	)
 	if err != nil {
 		return fmt.Errorf("insert news_items row %d: %w", id, err)
@@ -182,4 +190,18 @@ func (sdb *SQLiteDB) SetNewsEntryPostID(id int64, postID int64) error {
 	}
 
 	return nil
+}
+
+func (sdb *SQLiteDB) GetCheckKeywords(id int64) (bool, error) {
+	var checkKeywords bool
+	err := sdb.DB.QueryRowContext(
+		sdb.Ctx,
+		`SELECT check_keywords FROM news_items WHERE id = ?`,
+		id,
+	).Scan(&checkKeywords)
+	if err != nil {
+		return false, fmt.Errorf("get check_keywords ID %d: %w", id, err)
+	}
+
+	return checkKeywords, nil
 }

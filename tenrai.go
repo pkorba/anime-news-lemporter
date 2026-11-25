@@ -338,7 +338,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 		synopsisSpotted := false
 
 		for _, paragraph := range textArray[2:] {
-			clearedPara := removePreviousRoles(paragraph)
+			clearedPara := RemovePreviousRoles(paragraph)
 
 			switch {
 			case strings.HasPrefix(clearedPara, "Staff  \n"):
@@ -465,7 +465,7 @@ func getReleaseDate(text string, publishedDate time.Time) string {
 var prevRole = regexp.MustCompile(`\s(\(_[^)]+\))`)
 
 // Remove example roles written in parentheses
-func removePreviousRoles(text string) string {
+func RemovePreviousRoles(text string) string {
 	return prevRole.ReplaceAllString(text, "")
 }
 
