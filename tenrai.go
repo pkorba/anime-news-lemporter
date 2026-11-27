@@ -311,6 +311,10 @@ var inlineKeywords = []string{
 }
 
 var synopsisDelimiters = regexp.MustCompile(`(?i)(\(Source:.*?\)|\\\[.*?MAL Rewrite\\\])`)
+var staffRegex = regexp.MustCompile(`^(Staff:?)\s\s\n`)
+var castRegex = regexp.MustCompile(`^(Cast:?)\s\s\n`)
+var synopsisRegex = regexp.MustCompile(`^(Synopsis:?\s\s\n)`)
+var noteRegex = regexp.MustCompile(`^_?Note:`)
 
 func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 
@@ -341,13 +345,13 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 			clearedPara := RemovePreviousRoles(paragraph)
 
 			switch {
-			case strings.HasPrefix(clearedPara, "Staff  \n"):
-				newsContent.Staff = strings.Replace(clearedPara, "Staff", "**Staff:**", 1)
+			case staffRegex.MatchString(clearedPara):
+				newsContent.Staff = replaceFirst(staffRegex, clearedPara, "**Staff:**")
 				newsContent.Staff = strings.ReplaceAll(newsContent.Staff, " **NEW**", "")
-			case strings.HasPrefix(clearedPara, "Cast  \n"):
-				newsContent.Cast = strings.Replace(clearedPara, "Cast", "**Cast:**", 1)
+			case castRegex.MatchString(clearedPara):
+				newsContent.Cast = replaceFirst(castRegex, clearedPara, "**Cast:**")
 				newsContent.Cast = strings.ReplaceAll(newsContent.Cast, " **NEW**", "")
-			case strings.HasPrefix(clearedPara, "Synopsis  \n"):
+			case synopsisRegex.MatchString(clearedPara):
 				// Set a flag if synopsis could continue in other paragraphs
 				if loc := synopsisDelimiters.FindStringIndex(clearedPara); loc != nil {
 					clearedPara = clearedPara[:loc[0]] + clearedPara[loc[1]:]
@@ -356,7 +360,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 				}
 
 				// Remove here, restore when printing in order to put the whole thing in spoiler
-				newsContent.Synopsis = strings.Replace(clearedPara, "Synopsis  \n", "", 1)
+				newsContent.Synopsis = replaceFirst(synopsisRegex, clearedPara, "")
 			case strings.HasPrefix(clearedPara, "Official site: "):
 				newsContent.OfficialLinks = clearedPara
 			case strings.HasPrefix(clearedPara, "Source: "):
@@ -365,8 +369,7 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 				synopsisSpotted = false
 			case strings.HasPrefix(clearedPara, "[YouTube video]"):
 				newsContent.TeaserPV = "**PV:** " + clearedPara
-			case strings.HasPrefix(clearedPara, "_Note:") ||
-				strings.HasPrefix(clearedPara, "Note:"):
+			case noteRegex.MatchString(clearedPara):
 				continue
 			default:
 				if synopsisSpotted {
@@ -389,6 +392,16 @@ func ParseTenraiNewsDetails(data []byte) (NewsContent, error) {
 	}
 
 	return newsContent, nil
+}
+
+// Replace first capture group
+func replaceFirst(re *regexp.Regexp, text string, replacement string) string {
+	idx := re.FindStringSubmatchIndex(text)
+	if idx == nil {
+		return text
+	}
+
+	return text[:idx[2]] + replacement + text[idx[3]:]
 }
 
 var dateRegex = regexp.MustCompile(`(?P<prefix>began\sairing|broadcast|stream|debut|\sair|scheduled|premiered?).*?(?:` +
