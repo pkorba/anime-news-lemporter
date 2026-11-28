@@ -404,7 +404,7 @@ func replaceFirst(re *regexp.Regexp, text string, replacement string) string {
 	return text[:idx[2]] + replacement + text[idx[3]:]
 }
 
-var dateRegex = regexp.MustCompile(`(?P<prefix>began\sairing|broadcast|stream|debut|\sair|scheduled|premiered?).*?(?:` +
+var dateRegex = regexp.MustCompile(`(?P<prefix>began\sairing|broadcast|\sstream|debut|\sair|scheduled|premiered?).*?(?:` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}),\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<year>\d{4}))|` +
 	`(?:(?P<month>January|February|March|April|May|June|July|August|September|October|November|December)\s(?P<day>\d{1,2}))|` +
